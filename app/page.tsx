@@ -248,6 +248,7 @@ export default function MannyObstacleRun() {
   const [gameState, setGameState] = useState<"idle" | "playing" | "dead">("idle");
   const [isPortrait, setIsPortrait] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [bgParticles, setBgParticles] = useState<React.ReactNode[]>([]);
 
   const toggleFullscreen = async () => {
     if (!document.fullscreenElement) {
@@ -263,6 +264,27 @@ export default function MannyObstacleRun() {
     check();
     window.addEventListener("resize", check);
     return () => window.removeEventListener("resize", check);
+  }, []);
+
+  useEffect(() => {
+    setBgParticles(
+      Array.from({ length: 30 }).map((_, i) => (
+        <div
+          key={i}
+          style={{
+            position: "absolute",
+            width: `${2 + Math.random() * 3}px`,
+            height: `${2 + Math.random() * 3}px`,
+            background: `rgba(255, 180, 50, ${0.1 + Math.random() * 0.2})`,
+            borderRadius: "50%",
+            left: `${Math.random() * 100}%`,
+            top: `${Math.random() * 100}%`,
+            animation: `float ${3 + Math.random() * 4}s ease-in-out infinite`,
+            animationDelay: `${Math.random() * 3}s`,
+          }}
+        />
+      ))
+    );
   }, []);
 
   useEffect(() => {
@@ -1102,22 +1124,7 @@ export default function MannyObstacleRun() {
 
       {/* Animated background particles */}
       <div style={{ position: "absolute", inset: 0, overflow: "hidden", pointerEvents: "none" }}>
-        {Array.from({ length: 30 }).map((_, i) => (
-          <div
-            key={i}
-            style={{
-              position: "absolute",
-              width: `${2 + Math.random() * 3}px`,
-              height: `${2 + Math.random() * 3}px`,
-              background: `rgba(255, 180, 50, ${0.1 + Math.random() * 0.2})`,
-              borderRadius: "50%",
-              left: `${Math.random() * 100}%`,
-              top: `${Math.random() * 100}%`,
-              animation: `float ${3 + Math.random() * 4}s ease-in-out infinite`,
-              animationDelay: `${Math.random() * 3}s`,
-            }}
-          />
-        ))}
+        {bgParticles}
       </div>
 
       {/* Title */}
