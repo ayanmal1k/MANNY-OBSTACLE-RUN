@@ -1597,7 +1597,7 @@ export default function MannyObstacleRun() {
 
         <div style={{ display: "flex", alignItems: "center", gap: "6px", padding: "6px 12px", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "6px" }}>
           <canvas ref={coinPreviewRef} width={20} height={20} style={{ imageRendering: "pixelated", borderRadius: "4px", background: "#1a1a2e" }} />
-          <span>Coin <span style={{ color: "#ffd700" }}>◎</span></span>
+          <span>Coin = <span style={{ color: "#ffd700" }}>1 Punch</span></span>
         </div>
       </div>
 
@@ -1611,7 +1611,7 @@ export default function MannyObstacleRun() {
           lineHeight: "1.8",
         }}
       >
-        Duck / Jump to dodge (+1) &bull; Punch to destroy for points &bull; Crystal bullet -50 HP &bull; Nano Jab -25 HP &bull; Health regens &bull; Collect coins ◎
+        Duck / Jump to dodge (+1) &bull; Punch costs 1 coin (+2-4 pts) &bull; Crystal -50 HP &bull; Nano Jab -25 HP &bull; Health regens &bull; ◎ = 1 punch
       </div>
 
       {/* Global CSS for animations */}

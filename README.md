@@ -18,7 +18,7 @@ You control **Manny**, who automatically runs from left to right. Your goal is t
 |--------|----------|-------|
 | Jump | `W` / `Arrow Up` / `Space` | -- |
 | Duck | `S` / `Arrow Down` | -- |
-| Punch | `D` / `Arrow Right` | Click |
+| Punch | `D` / `Arrow Right` | Click (costs 1 coin) |
 | Start / Retry | Any key | -- |
 
 ### Scoring
@@ -26,9 +26,9 @@ You control **Manny**, who automatically runs from left to right. Your goal is t
 | Action | Points |
 |--------|--------|
 | Dodge an obstacle (duck or jump) | +1 |
-| Punch a **Scrap-Mite** | +2 |
-| Punch an **Aero-Jelly** | +3 |
-| Punch a **Hollow Stalker** | +4 |
+| Punch a **Scrap-Mite** (costs 1 coin) | +2 |
+| Punch an **Aero-Jelly** (costs 1 coin) | +3 |
+| Punch a **Hollow Stalker** (costs 1 coin) | +4 |
 
 ### Obstacles
 
@@ -63,7 +63,12 @@ You have **100 HP**. A health bar is displayed in the top-left corner of the gam
 
 ### Coins
 
-Collect gold coins that appear at random heights for bonus points. Coin count is tracked separately.
+Gold coins appear at random heights and intervals. Collect them to fuel your punches.
+
+- Each coin allows **one punch** (1 coin = 1 punch).
+- Punches are blocked when you have 0 coins, shown as `✕ No Coin!` on the HUD.
+- Coins are placed with a safe gap from obstacles so they're always reachable.
+- Coin count is displayed on the canvas HUD and score bar.
 
 ---
 
@@ -130,8 +135,8 @@ npm start
 - Three enemy types with unique behaviors and scoring
 - Bullet system with two types: Crystal KO-Spark (50 HP) and Nano Jab (25 HP)
 - Health bar with auto-regen and damage flash feedback
-- Coin collection for bonus points
-- Punch mechanic to destroy obstacles
+- Coin collection fuels punches (1 coin = 1 punch), with safe placement from obstacles
+- Punch mechanic to destroy obstacles (costs 1 coin per use)
 - Score popups and particle effects
 - High score saved to localStorage
 - Mobile-friendly with landscape orientation lock
