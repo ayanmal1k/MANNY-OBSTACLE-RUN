@@ -96,6 +96,10 @@ const COIN_H = 20;
 const COIN_SPAWN_MIN = 60;                 // min frames between coin spawns
 const COIN_SPAWN_MAX = 150;
 
+const MAX_HEALTH = 100;
+const BULLET_DAMAGE = 50;
+const HEALTH_REGEN = 0.15;                 // health recovered per frame-equivalent
+
 /* ───────── obstacle types ───────── */
 type ObstacleKind = "aero" | "hollow" | "mite";
 interface Obstacle {
@@ -323,6 +327,7 @@ export default function MannyObstacleRun() {
     speed: OBSTACLE_SPEED_INITIAL,
     score: 0,
     coinCount: 0,
+    health: MAX_HEALTH,
     playing: false,
     dead: false,
     // Score popup effect
@@ -372,7 +377,7 @@ export default function MannyObstacleRun() {
     bgImg.current.src = "/bg.png";
 
     bulletImg.current = new Image();
-    bulletImg.current.src = "/bullet.png";
+    bulletImg.current.src = "/crystal%20bullet.png";
 
     coinImg.current = new Image();
     coinImg.current.src = "/coin.png";
@@ -468,6 +473,7 @@ export default function MannyObstacleRun() {
     g.speed = OBSTACLE_SPEED_INITIAL;
     g.score = 0;
     g.coinCount = 0;
+    g.health = MAX_HEALTH;
     setCoinCount(0);
     g.playing = true;
     g.dead = false;
@@ -667,23 +673,32 @@ export default function MannyObstacleRun() {
           const bpRight = bcx + bw - 40;
           const bpTop = bcy + 10;
           const bpBottom = bcy + bh - 6;
-          for (const b of g.bullets) {
+          for (let i = g.bullets.length - 1; i >= 0; i--) {
+            const b = g.bullets[i];
             if (
               bpRight > b.x &&
               bpLeft < b.x + b.w &&
               bpBottom > b.y &&
               bpTop < b.y + b.h
             ) {
-              g.dead = true;
-              g.playing = false;
-              setGameState("dead");
-              if (g.score > highScore) {
-                setHighScore(g.score);
-                localStorage.setItem("manny-hi", String(g.score));
+              g.health -= BULLET_DAMAGE;
+              g.bullets.splice(i, 1);
+              if (g.health <= 0) {
+                g.dead = true;
+                g.playing = false;
+                setGameState("dead");
+                if (g.score > highScore) {
+                  setHighScore(g.score);
+                  localStorage.setItem("manny-hi", String(g.score));
+                }
               }
-              break;
             }
           }
+        }
+
+        // Health regen
+        if (g.health < MAX_HEALTH) {
+          g.health = Math.min(MAX_HEALTH, g.health + HEALTH_REGEN * dt);
         }
 
         // Punch hitbox — check if punch destroys any obstacle
@@ -1043,6 +1058,26 @@ export default function MannyObstacleRun() {
       ctx.font = "bold 10px 'Press Start 2P', monospace";
       ctx.textAlign = "left";
       ctx.fillText(`◎ ${g.coinCount}`, 12, 56);
+
+      // Health bar
+      const hpPct = Math.max(0, g.health / MAX_HEALTH);
+      const hpBarW = 80;
+      const hpBarH = 8;
+      const hpX = 12;
+      const hpY = 66;
+      ctx.fillStyle = "rgba(0,0,0,0.5)";
+      ctx.fillRect(hpX, hpY, hpBarW, hpBarH);
+      ctx.fillStyle = hpPct > 0.5 ? "#2ecc71" : hpPct > 0.25 ? "#f39c12" : "#e74c3c";
+      ctx.fillRect(hpX, hpY, hpBarW * hpPct, hpBarH);
+      ctx.strokeStyle = "rgba(255,255,255,0.3)";
+      ctx.lineWidth = 1;
+      ctx.strokeRect(hpX, hpY, hpBarW, hpBarH);
+
+      // Health text
+      ctx.fillStyle = "rgba(255,255,255,0.6)";
+      ctx.font = "bold 7px 'Press Start 2P', monospace";
+      ctx.textAlign = "left";
+      ctx.fillText(`HP ${Math.ceil(g.health)}/${MAX_HEALTH}`, hpX + hpBarW + 8, hpY + 7);
 
       // Punch indicator
       if (g.playing && !g.dead) {
@@ -1519,7 +1554,7 @@ export default function MannyObstacleRun() {
           lineHeight: "1.8",
         }}
       >
-        Duck / Jump to dodge (+1) &bull; Punch to destroy for points &bull; Bullets cannot be punched &bull; Collect coins ◎
+        Duck / Jump to dodge (+1) &bull; Punch to destroy for points &bull; Bullets do 50% damage (health regens) &bull; Collect coins ◎
       </div>
 
       {/* Global CSS for animations */}
