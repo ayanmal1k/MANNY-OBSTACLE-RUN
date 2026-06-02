@@ -249,6 +249,7 @@ export default function MannyObstacleRun() {
   const [isPortrait, setIsPortrait] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [bgParticles, setBgParticles] = useState<React.ReactNode[]>([]);
+  const [isTouchDevice, setIsTouchDevice] = useState(false);
 
   const toggleFullscreen = async () => {
     if (!document.fullscreenElement) {
@@ -285,6 +286,10 @@ export default function MannyObstacleRun() {
         />
       ))
     );
+  }, []);
+
+  useEffect(() => {
+    setIsTouchDevice("ontouchstart" in window || navigator.maxTouchPoints > 0);
   }, []);
 
   useEffect(() => {
@@ -1197,6 +1202,11 @@ export default function MannyObstacleRun() {
           alignItems: isFullscreen ? "center" : undefined,
           justifyContent: isFullscreen ? "center" : undefined,
         }}
+        onTouchStart={() => {
+          if (gameState === "idle" || gameState === "dead") {
+            resetGame();
+          }
+        }}
       >
         <canvas
           ref={canvasRef}
@@ -1310,6 +1320,101 @@ export default function MannyObstacleRun() {
               PRESS ANY KEY TO RETRY
             </div>
           </div>
+        )}
+
+        {/* Mobile touch controls */}
+        {isTouchDevice && (
+          <>
+            {/* Punch button - left side */}
+            <button
+              onTouchStart={(e) => { e.preventDefault(); e.stopPropagation(); keys.current["d"] = true; }}
+              onTouchEnd={(e) => { e.preventDefault(); keys.current["d"] = false; }}
+              style={{
+                position: "absolute",
+                left: "8px",
+                bottom: "12px",
+                width: "64px",
+                height: "64px",
+                borderRadius: "50%",
+                border: "2px solid rgba(243,156,18,0.5)",
+                background: "rgba(243,156,18,0.2)",
+                color: "#f39c12",
+                fontSize: "22px",
+                fontWeight: 900,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                pointerEvents: "auto",
+                backdropFilter: "blur(4px)",
+                WebkitTapHighlightColor: "transparent",
+                touchAction: "none",
+                userSelect: "none",
+                zIndex: 20,
+              }}
+            >
+              P
+            </button>
+
+            {/* Jump button - right side top */}
+            <button
+              onTouchStart={(e) => { e.preventDefault(); e.stopPropagation(); keys.current["arrowup"] = true; }}
+              onTouchEnd={(e) => { e.preventDefault(); keys.current["arrowup"] = false; }}
+              style={{
+                position: "absolute",
+                right: "12px",
+                bottom: "84px",
+                width: "64px",
+                height: "64px",
+                borderRadius: "50%",
+                border: "2px solid rgba(46,204,113,0.5)",
+                background: "rgba(46,204,113,0.2)",
+                color: "#2ecc71",
+                fontSize: "22px",
+                fontWeight: 900,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                pointerEvents: "auto",
+                backdropFilter: "blur(4px)",
+                WebkitTapHighlightColor: "transparent",
+                touchAction: "none",
+                userSelect: "none",
+                zIndex: 20,
+              }}
+            >
+              ▲
+            </button>
+
+            {/* Duck button - right side bottom */}
+            <button
+              onTouchStart={(e) => { e.preventDefault(); e.stopPropagation(); keys.current["arrowdown"] = true; }}
+              onTouchEnd={(e) => { e.preventDefault(); keys.current["arrowdown"] = false; }}
+              style={{
+                position: "absolute",
+                right: "12px",
+                bottom: "12px",
+                width: "64px",
+                height: "64px",
+                borderRadius: "50%",
+                border: "2px solid rgba(52,152,219,0.5)",
+                background: "rgba(52,152,219,0.2)",
+                color: "#3498db",
+                fontSize: "22px",
+                fontWeight: 900,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                pointerEvents: "auto",
+                backdropFilter: "blur(4px)",
+                WebkitTapHighlightColor: "transparent",
+                touchAction: "none",
+                userSelect: "none",
+                zIndex: 20,
+              }}
+            >
+              ▼
+            </button>
+          </>
         )}
       </div>
 
