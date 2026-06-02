@@ -7,25 +7,26 @@ const _geist = Geist({ subsets: ["latin"] });
 const _geistMono = Geist_Mono({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: 'v0 App',
-  description: 'Created with v0',
-  generator: 'v0.app',
+  title: 'Manny Obstacle Run',
+  description: 'Dodge, jump, punch, and collect coins in this fast-paced obstacle runner!',
+  metadataBase: new URL('https://manny-obstacle-run.vercel.app'),
+  keywords: ['game', 'obstacle run', 'manny', 'platformer', 'action'],
+  authors: [{ name: 'Manny Coin Game' }],
+  openGraph: {
+    title: 'Manny Obstacle Run',
+    description: 'Dodge, jump, punch, and collect coins in this fast-paced obstacle runner!',
+    type: 'website',
+    images: [{ url: '/manny.png' }],
+  },
+  twitter: {
+    card: 'summary',
+    title: 'Manny Obstacle Run',
+    description: 'Dodge, jump, punch, and collect coins in this fast-paced obstacle runner!',
+    images: ['/manny.png'],
+  },
   icons: {
-    icon: [
-      {
-        url: '/icon-light-32x32.png',
-        media: '(prefers-color-scheme: light)',
-      },
-      {
-        url: '/icon-dark-32x32.png',
-        media: '(prefers-color-scheme: dark)',
-      },
-      {
-        url: '/icon.svg',
-        type: 'image/svg+xml',
-      },
-    ],
-    apple: '/apple-icon.png',
+    icon: '/manny.png',
+    apple: '/manny.png',
   },
 }
 

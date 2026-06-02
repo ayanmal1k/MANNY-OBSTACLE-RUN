@@ -87,9 +87,14 @@ const PUNCH_SCORE = 2;                     // points for punching an obstacle
 
 const BULLET_W = 30;
 const BULLET_H = 10;
-const BULLET_SPEED = 12;
+const BULLET_SPEED = 7;
 const BULLET_SHOT_MIN = 80;                // min frames between shots
 const BULLET_SHOT_MAX = 200;               // max frames between shots
+
+const COIN_W = 20;
+const COIN_H = 20;
+const COIN_SPAWN_MIN = 60;                 // min frames between coin spawns
+const COIN_SPAWN_MAX = 150;
 
 /* ───────── obstacle types ───────── */
 type ObstacleKind = "aero" | "hollow" | "mite";
@@ -110,6 +115,12 @@ interface Bullet {
   w: number;
   h: number;
   kind: ObstacleKind;
+}
+
+interface Coin {
+  x: number;
+  y: number;
+  collected: boolean;
 }
 
 /* ───────── particle effect for punch destroy ───────── */
@@ -233,6 +244,7 @@ export default function MannyObstacleRun() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [score, setScore] = useState(0);
   const [highScore, setHighScore] = useState(0);
+  const [coinCount, setCoinCount] = useState(0);
   const [gameState, setGameState] = useState<"idle" | "playing" | "dead">("idle");
 
   // Mutable game state (not React state — updated every frame)
@@ -250,10 +262,13 @@ export default function MannyObstacleRun() {
     bgX: 0,
     obstacles: [] as Obstacle[],
     bullets: [] as Bullet[],
+    coins: [] as Coin[],
     particles: [] as Particle[],
     nextObstacleIn: 80,
+    nextCoinIn: randomInt(COIN_SPAWN_MIN, COIN_SPAWN_MAX),
     speed: OBSTACLE_SPEED_INITIAL,
     score: 0,
+    coinCount: 0,
     playing: false,
     dead: false,
     // Score popup effect
@@ -274,6 +289,12 @@ export default function MannyObstacleRun() {
   const hollowImg = useRef<HTMLCanvasElement | HTMLImageElement | null>(null);
   const miteImg = useRef<HTMLCanvasElement | HTMLImageElement | null>(null);
   const bulletImg = useRef<HTMLImageElement | null>(null);
+  const coinImg = useRef<HTMLImageElement | null>(null);
+  const aeroPreviewRef = useRef<HTMLCanvasElement>(null);
+  const hollowPreviewRef = useRef<HTMLCanvasElement>(null);
+  const mitePreviewRef = useRef<HTMLCanvasElement>(null);
+  const bulletPreviewRef = useRef<HTMLCanvasElement>(null);
+  const coinPreviewRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
     const cleanImageRef = (src: string, ref: React.MutableRefObject<HTMLCanvasElement | HTMLImageElement | null>) => {
@@ -299,9 +320,38 @@ export default function MannyObstacleRun() {
     bulletImg.current = new Image();
     bulletImg.current.src = "/bullet.png";
 
+    coinImg.current = new Image();
+    coinImg.current.src = "/coin.png";
+
     // Load high-score from localStorage
     const saved = localStorage.getItem("manny-hi");
     if (saved) setHighScore(parseInt(saved, 10));
+  }, []);
+
+  /* ── draw preview sprites for scoring guide ── */
+  useEffect(() => {
+    const draw = () => {
+      const jobs = [
+        { ref: aeroPreviewRef, img: aeroJellyImg.current, fw: AERO_FW, fh: AERO_FH },
+        { ref: hollowPreviewRef, img: hollowImg.current, fw: HOLLOW_FW, fh: HOLLOW_FH },
+        { ref: mitePreviewRef, img: miteImg.current, fw: MITE_FW, fh: MITE_FH },
+        { ref: bulletPreviewRef, img: bulletImg.current, fw: 0, fh: 0 },
+        { ref: coinPreviewRef, img: coinImg.current, fw: 0, fh: 0 },
+      ];
+      for (const j of jobs) {
+        const c = j.ref.current;
+        if (!c || !j.img) continue;
+        const cx = c.getContext("2d");
+        if (!cx) continue;
+        if (j.fw > 0) {
+          cx.drawImage(j.img, 20, 20, j.fw - 40, j.fh - 20, 0, 0, c.width, c.height);
+        } else {
+          cx.drawImage(j.img, 0, 0, c.width, c.height);
+        }
+      }
+    };
+    const t = setTimeout(draw, 600);
+    return () => clearTimeout(t);
   }, []);
 
   /* ── keyboard handlers ── */
@@ -356,11 +406,15 @@ export default function MannyObstacleRun() {
     g.bgX = 0;
     g.obstacles = [];
     g.bullets = [];
+    g.coins = [];
     g.particles = [];
     g.scorePopups = [];
     g.nextObstacleIn = 80;
+    g.nextCoinIn = randomInt(COIN_SPAWN_MIN, COIN_SPAWN_MAX);
     g.speed = OBSTACLE_SPEED_INITIAL;
     g.score = 0;
+    g.coinCount = 0;
+    setCoinCount(0);
     g.playing = true;
     g.dead = false;
     setScore(0);
@@ -599,7 +653,8 @@ export default function MannyObstacleRun() {
               ob.destroyed = true;
               ob.destroyAnim = 0;
               ob.passed = true; // don't score again as dodge
-              g.score += PUNCH_SCORE;
+              const punchPoints = ob.kind === "mite" ? 2 : ob.kind === "aero" ? 3 : 4;
+              g.score += punchPoints;
               setScore(g.score);
               // Spawn particles
               spawnDestroyParticles(ob, g.particles);
@@ -607,11 +662,42 @@ export default function MannyObstacleRun() {
               g.scorePopups.push({
                 x: ob.x,
                 y: ob.kind === "aero" ? GROUND_Y - 100 - 10 : GROUND_Y - ob.height - 10,
-                text: `+${PUNCH_SCORE} PUNCH!`,
+                text: `+${punchPoints} PUNCH!`,
                 life: 60,
                 color: "#f39c12",
               });
             }
+          }
+        }
+
+        // Coin spawning
+        g.nextCoinIn--;
+        if (g.nextCoinIn <= 0 && Math.random() < 0.15) {
+          const coinY = randomInt(GROUND_Y - 130, GROUND_Y - 30);
+          g.coins.push({ x: CANVAS_W + 20, y: coinY, collected: false });
+          g.nextCoinIn = randomInt(COIN_SPAWN_MIN, COIN_SPAWN_MAX);
+        }
+
+        // Move coins & collect
+        for (let i = g.coins.length - 1; i >= 0; i--) {
+          const c = g.coins[i];
+          if (c.collected) { g.coins.splice(i, 1); continue; }
+          c.x -= g.speed;
+          if (c.x + COIN_W < -10) { g.coins.splice(i, 1); continue; }
+          // Collision with player hitbox
+          const cw = g.isDucking ? DUCK_DRAW_W : g.isPunching ? PUNCH_DRAW_W : CHAR_DRAW_W;
+          const cH = g.isDucking ? DUCK_DRAW_H : g.isPunching ? PUNCH_DRAW_H : CHAR_DRAW_H;
+          const cx = CHAR_X;
+          const cy = g.charY;
+          if (
+            cx + cw > c.x &&
+            cx < c.x + COIN_W &&
+            cy + cH > c.y &&
+            cy < c.y + COIN_H
+          ) {
+            c.collected = true;
+            g.coinCount++;
+            setCoinCount(g.coinCount);
           }
         }
 
@@ -765,6 +851,14 @@ export default function MannyObstacleRun() {
         }
       }
 
+      /* ── draw coins ── */
+      if (coinImg.current) {
+        for (const c of g.coins) {
+          if (c.collected) continue;
+          ctx.drawImage(coinImg.current, c.x, c.y, COIN_W, COIN_H);
+        }
+      }
+
       /* ── draw particles ── */
       for (const p of g.particles) {
         const alpha = p.life / p.maxLife;
@@ -795,7 +889,7 @@ export default function MannyObstacleRun() {
             const sx = g.punchAnimFrame * PUNCH_FW;
             ctx.drawImage(
               punchImg.current,
-              sx + SPRITE_CROP, SPRITE_CROP, PUNCH_FW - SPRITE_CROP * 2, PUNCH_FH - SPRITE_CROP,
+              sx + SPRITE_CROP, SPRITE_CROP, PUNCH_FW - SPRITE_CROP * 2, PUNCH_FH - SPRITE_CROP * 2,
               CHAR_X, g.charY, PUNCH_DRAW_W, PUNCH_DRAW_H
             );
           }
@@ -827,7 +921,7 @@ export default function MannyObstacleRun() {
             const sh = DUCK_FH * cropRatio;
             ctx.drawImage(
               duckImg.current,
-              sx + SPRITE_CROP, sy + SPRITE_CROP, DUCK_FW - SPRITE_CROP * 2, sh - SPRITE_CROP,
+              sx + SPRITE_CROP, sy + SPRITE_CROP, DUCK_FW - SPRITE_CROP * 2, sh - SPRITE_CROP * 2,
               CHAR_X, g.charY, DUCK_DRAW_W, DUCK_DRAW_H
             );
           }
@@ -837,7 +931,7 @@ export default function MannyObstacleRun() {
             const sx = g.animFrame * RUN_FW;
             ctx.drawImage(
               runImg.current,
-              sx + SPRITE_CROP, SPRITE_CROP, RUN_FW - SPRITE_CROP * 2, RUN_FH - SPRITE_CROP,
+              sx + SPRITE_CROP, SPRITE_CROP, RUN_FW - SPRITE_CROP * 2, RUN_FH - SPRITE_CROP * 2,
               CHAR_X, g.charY, CHAR_DRAW_W, CHAR_DRAW_H
             );
           }
@@ -847,7 +941,7 @@ export default function MannyObstacleRun() {
             const sx = g.animFrame * RUN_FW;
             ctx.drawImage(
               runImg.current,
-              sx + SPRITE_CROP, SPRITE_CROP, RUN_FW - SPRITE_CROP * 2, RUN_FH - SPRITE_CROP,
+              sx + SPRITE_CROP, SPRITE_CROP, RUN_FW - SPRITE_CROP * 2, RUN_FH - SPRITE_CROP * 2,
               CHAR_X, g.charY, CHAR_DRAW_W, CHAR_DRAW_H
             );
           }
@@ -860,7 +954,7 @@ export default function MannyObstacleRun() {
           const sx = idleAnimFrame * IDLE_FW;
           ctx.drawImage(
             idleImg.current,
-            sx + SPRITE_CROP, SPRITE_CROP, IDLE_FW - SPRITE_CROP * 2, IDLE_FH - SPRITE_CROP,
+            sx + SPRITE_CROP, SPRITE_CROP, IDLE_FW - SPRITE_CROP * 2, IDLE_FH - SPRITE_CROP * 2,
             CHAR_X, GROUND_Y - CHAR_DRAW_H, CHAR_DRAW_W, CHAR_DRAW_H
           );
         }
@@ -869,15 +963,21 @@ export default function MannyObstacleRun() {
       /* ── HUD overlay on canvas ── */
       // Score
       ctx.fillStyle = "rgba(0,0,0,0.5)";
-      ctx.fillRect(CANVAS_W - 180, 8, 170, 40);
+      ctx.fillRect(CANVAS_W - 220, 8, 210, 40);
       ctx.strokeStyle = "rgba(255,180,50,0.5)";
       ctx.lineWidth = 1;
-      ctx.strokeRect(CANVAS_W - 180, 8, 170, 40);
+      ctx.strokeRect(CANVAS_W - 220, 8, 210, 40);
 
       ctx.fillStyle = "#fff";
-      ctx.font = "bold 14px 'Press Start 2P', monospace";
+      ctx.font = "bold 12px 'Press Start 2P', monospace";
       ctx.textAlign = "right";
       ctx.fillText(`SCORE: ${String(g.score).padStart(5, "0")}`, CANVAS_W - 20, 34);
+
+      // Coins
+      ctx.fillStyle = "rgba(255,215,0,0.8)";
+      ctx.font = "bold 10px 'Press Start 2P', monospace";
+      ctx.textAlign = "left";
+      ctx.fillText(`◎ ${g.coinCount}`, 12, 56);
 
       // Punch indicator
       if (g.playing && !g.dead) {
@@ -904,10 +1004,7 @@ export default function MannyObstacleRun() {
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       const k = e.key.toLowerCase();
-      if (
-        (gameState === "idle" || gameState === "dead") &&
-        (k === " " || k === "arrowup" || k === "w" || k === "enter")
-      ) {
+      if (gameState === "idle" || gameState === "dead") {
         e.preventDefault();
         resetGame();
       }
@@ -1028,7 +1125,7 @@ export default function MannyObstacleRun() {
                 animation: "pulse 1.5s ease-in-out infinite",
               }}
             >
-              ▲ PRESS SPACE / W TO START ▲
+              ▲ PRESS ANY KEY TO START ▲
             </div>
             <div
               style={{
@@ -1054,7 +1151,7 @@ export default function MannyObstacleRun() {
               }}
             >
               Dodge obstacles for +{DODGE_SCORE} pt<br />
-              Punch to destroy for +{PUNCH_SCORE} pts!
+              Punch: Mite +2 &bull; Jelly +3 &bull; Hollow +4
             </div>
           </div>
         )}
@@ -1098,7 +1195,7 @@ export default function MannyObstacleRun() {
                 animation: "pulse 1.5s ease-in-out infinite",
               }}
             >
-              PRESS SPACE TO RETRY
+              PRESS ANY KEY TO RETRY
             </div>
           </div>
         )}
@@ -1129,57 +1226,68 @@ export default function MannyObstacleRun() {
           </div>
           <div style={{ fontSize: "18px", color: "#2ecc71" }}>{highScore}</div>
         </div>
+        <div style={{ width: "1px", background: "rgba(255,255,255,0.1)" }} />
+        <div style={{ textAlign: "center" }}>
+          <div style={{ fontSize: "8px", color: "rgba(255,255,255,0.4)", marginBottom: "4px", letterSpacing: "2px" }}>
+            COINS
+          </div>
+          <div style={{ fontSize: "18px", color: "#ffd700" }}>◎ {coinCount}</div>
+        </div>
       </div>
 
-      {/* Controls hint */}
+      {/* Scoring Guide */}
       <div
         style={{
           marginTop: "16px",
           display: "flex",
-          gap: "12px",
+          gap: "24px",
           fontSize: "9px",
-          color: "rgba(255,255,255,0.25)",
+          color: "rgba(255,255,255,0.5)",
           flexWrap: "wrap",
           justifyContent: "center",
+          alignItems: "center",
         }}
       >
-        <span
-          style={{
-            padding: "4px 10px",
-            border: "1px solid rgba(255,255,255,0.1)",
-            borderRadius: "4px",
-          }}
-        >
-          ⬆ W — JUMP
-        </span>
-        <span
-          style={{
-            padding: "4px 10px",
-            border: "1px solid rgba(255,255,255,0.1)",
-            borderRadius: "4px",
-          }}
-        >
-          ⬇ S — DUCK
-        </span>
-        <span
-          style={{
-            padding: "4px 10px",
-            border: "1px solid rgba(243,156,18,0.3)",
-            borderRadius: "4px",
-            color: "rgba(243,156,18,0.5)",
-          }}
-        >
-          🥊 D / → / CLICK — PUNCH (+{PUNCH_SCORE}pts)
-        </span>
-        <span
-          style={{
-            padding: "4px 10px",
-            border: "1px solid rgba(255,255,255,0.1)",
-            borderRadius: "4px",
-          }}
-        >
-          SPACE — START
-        </span>
+        <div style={{ fontSize: "10px", color: "#f39c12", letterSpacing: "2px", width: "100%", textAlign: "center", marginBottom: "4px" }}>
+          ── SCORING ──
+        </div>
+
+        <div style={{ display: "flex", alignItems: "center", gap: "6px", padding: "6px 12px", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "6px" }}>
+          <canvas ref={aeroPreviewRef} width={36} height={36} style={{ imageRendering: "pixelated", borderRadius: "4px", background: "#1a1a2e" }} />
+          <span>Aero-Jelly <span style={{ color: "#f39c12" }}>+3</span></span>
+        </div>
+
+        <div style={{ display: "flex", alignItems: "center", gap: "6px", padding: "6px 12px", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "6px" }}>
+          <canvas ref={hollowPreviewRef} width={36} height={36} style={{ imageRendering: "pixelated", borderRadius: "4px", background: "#1a1a2e" }} />
+          <span>Hollow Stalker <span style={{ color: "#f39c12" }}>+4</span></span>
+        </div>
+
+        <div style={{ display: "flex", alignItems: "center", gap: "6px", padding: "6px 12px", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "6px" }}>
+          <canvas ref={mitePreviewRef} width={36} height={36} style={{ imageRendering: "pixelated", borderRadius: "4px", background: "#1a1a2e" }} />
+          <span>Scrap-Mite <span style={{ color: "#f39c12" }}>+2</span></span>
+        </div>
+
+        <div style={{ display: "flex", alignItems: "center", gap: "6px", padding: "6px 12px", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "6px" }}>
+          <canvas ref={bulletPreviewRef} width={36} height={12} style={{ imageRendering: "pixelated", borderRadius: "4px", background: "#1a1a2e" }} />
+          <span>KO-Spark <span style={{ color: "#e74c3c" }}>☠</span></span>
+        </div>
+
+        <div style={{ display: "flex", alignItems: "center", gap: "6px", padding: "6px 12px", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "6px" }}>
+          <canvas ref={coinPreviewRef} width={20} height={20} style={{ imageRendering: "pixelated", borderRadius: "4px", background: "#1a1a2e" }} />
+          <span>Coin <span style={{ color: "#ffd700" }}>◎</span></span>
+        </div>
+      </div>
+
+      <div
+        style={{
+          marginTop: "8px",
+          fontSize: "8px",
+          color: "rgba(255,255,255,0.2)",
+          textAlign: "center",
+          lineHeight: "1.8",
+        }}
+      >
+        Duck / Jump to dodge (+1) &bull; Punch to destroy for points &bull; Bullets cannot be punched &bull; Collect coins ◎
       </div>
 
       {/* Global CSS for animations */}
