@@ -94,8 +94,8 @@ const NANO_JAB_DAMAGE = 25;
 
 const COIN_W = 20;
 const COIN_H = 20;
-const COIN_SPAWN_MIN = 60;                 // min frames between coin spawns
-const COIN_SPAWN_MAX = 150;
+const COIN_SPAWN_MIN = 160;                 // min frames between coin spawns
+const COIN_SPAWN_MAX = 300;
 
 const MAX_HEALTH = 100;
 const BULLET_DAMAGE = 50;
@@ -775,11 +775,17 @@ export default function MannyObstacleRun() {
           }
         }
 
-        // Coin spawning
+        // Coin spawning — less frequent, no overlap with obstacles
         g.nextCoinIn -= dt;
-        if (g.nextCoinIn <= 0 && Math.random() < 0.15) {
-          const coinY = randomInt(GROUND_Y - 130, GROUND_Y - 30);
-          g.coins.push({ x: CANVAS_W + 20, y: coinY, collected: false });
+        if (g.nextCoinIn <= 0 && Math.random() < 0.08) {
+          const coinX = CANVAS_W + 20;
+          const overlapsObstacle = g.obstacles.some(
+            (ob) => !ob.destroyed && coinX < ob.x + ob.width + 60 && coinX + COIN_W + 60 > ob.x
+          );
+          if (!overlapsObstacle) {
+            const coinY = randomInt(GROUND_Y - 130, GROUND_Y - 30);
+            g.coins.push({ x: coinX, y: coinY, collected: false });
+          }
           g.nextCoinIn = randomInt(COIN_SPAWN_MIN, COIN_SPAWN_MAX);
         }
 
