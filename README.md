@@ -40,10 +40,20 @@ You control **Manny**, who automatically runs from left to right. Your goal is t
 
 ### Bullets (KO-Spark)
 
-Each enemy can fire **KO-Spark** bullets at random intervals. Bullets **cannot be punched** -- you must dodge them.
+Each enemy can fire **Crystal KO-Spark** bullets at random intervals. Bullets **cannot be punched** -- you must dodge them.
 
 - **Aero-Jelly & Hollow Stalker bullets**: Mid-height -- dodge by **ducking** or **jumping**.
 - **Scrap-Mite bullets**: Low to the ground -- must be **jumped** over (ducking won't help).
+- Each bullet hit removes **50 HP** (half your health bar).
+- Health **regenerates automatically** over time.
+
+### Health System
+
+You have **100 HP**. A health bar is displayed in the top-left corner of the game area.
+- Taking a bullet reduces HP by 50.
+- Health regenerates slowly over time (~5.5 seconds to full recovery from 50 HP).
+- If HP reaches 0, the game ends.
+- Colors indicate danger level: green (>50%), yellow (25-50%), red (<25%).
 
 ### Coins
 
@@ -64,7 +74,8 @@ public/
   aero-jelly.jpg     -- Aero-Jelly obstacle sprite (2 frames)
   hollow.jpg         -- Hollow Stalker obstacle sprite (2 frames)
   mite.png           -- Scrap-Mite obstacle sprite (2 frames)
-  bullet.png         -- KO-Spark bullet sprite
+  bullet.png           -- KO-Spark bullet sprite (old)
+  crystal\ bullet.png  -- Crystal KO-Spark bullet sprite
   coin.png           -- Collectible coin sprite
   bg.png             -- Parallax background
 
@@ -112,6 +123,7 @@ npm start
 - Procedurally generated obstacles with increasing difficulty
 - Three enemy types with unique behaviors and scoring
 - Bullet system with different dodge requirements per enemy
+- Health bar with auto-regen (50% damage per hit)
 - Coin collection for bonus points
 - Punch mechanic to destroy obstacles
 - Score popups and particle effects

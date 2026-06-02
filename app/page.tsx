@@ -1322,7 +1322,8 @@ export default function MannyObstacleRun() {
               }}
             >
               Dodge obstacles for +{DODGE_SCORE} pt<br />
-              Punch: Mite +2 &bull; Jelly +3 &bull; Hollow +4
+              Punch: Mite +2 &bull; Jelly +3 &bull; Hollow +4<br />
+              Bullets deal 50% damage &bull; Health regens over time
             </div>
           </div>
         )}
