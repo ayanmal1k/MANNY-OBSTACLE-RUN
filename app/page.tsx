@@ -69,7 +69,8 @@ const JUMP_DRAW_H = 118;                   // height when jumping (keeps charact
 const JUMP_DRAW_W = 118;                   // width when jumping (keeps character scale consistent)
 const PUNCH_DRAW_H = 100;                  // punch height
 const PUNCH_DRAW_W = 130;                  // punch is wider (arm extends)
-const CHAR_X = 80;                         // character x position
+const CHAR_X = 80;
+const SPRITE_CROP = 10;                         // character x position
 
 const GRAVITY = 0.65;
 const JUMP_VELOCITY = -14;
@@ -84,6 +85,12 @@ const PUNCH_DURATION = 18;                 // frames the punch lasts
 const DODGE_SCORE = 1;                     // points for dodging
 const PUNCH_SCORE = 2;                     // points for punching an obstacle
 
+const BULLET_W = 30;
+const BULLET_H = 10;
+const BULLET_SPEED = 7;
+const BULLET_SHOT_MIN = 80;                // min frames between shots
+const BULLET_SHOT_MAX = 200;               // max frames between shots
+
 /* ───────── obstacle types ───────── */
 type ObstacleKind = "aero" | "hollow" | "mite";
 interface Obstacle {
@@ -94,6 +101,15 @@ interface Obstacle {
   passed: boolean;
   destroyed: boolean;         // punched away
   destroyAnim: number;       // destruction animation timer
+  shotTimer: number;         // frames until next bullet shot
+}
+
+interface Bullet {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  kind: ObstacleKind;
 }
 
 /* ───────── particle effect for punch destroy ───────── */
@@ -124,7 +140,11 @@ function createObstacle(x: number, speed: number): Obstacle {
     mite:  { width: MITE_DRAW_W,  height: MITE_DRAW_H },
   };
   const { width, height } = sizes[kind];
-  return { x, kind, width, height, passed: false, destroyed: false, destroyAnim: 0 };
+  return {
+    x, kind, width, height,
+    passed: false, destroyed: false, destroyAnim: 0,
+    shotTimer: randomInt(BULLET_SHOT_MIN, BULLET_SHOT_MAX),
+  };
 }
 
 function spawnDestroyParticles(ob: Obstacle, particles: Particle[]) {
@@ -229,6 +249,7 @@ export default function MannyObstacleRun() {
     duckAnimFrame: 0,
     bgX: 0,
     obstacles: [] as Obstacle[],
+    bullets: [] as Bullet[],
     particles: [] as Particle[],
     nextObstacleIn: 80,
     speed: OBSTACLE_SPEED_INITIAL,
@@ -252,6 +273,7 @@ export default function MannyObstacleRun() {
   const aeroJellyImg = useRef<HTMLCanvasElement | HTMLImageElement | null>(null);
   const hollowImg = useRef<HTMLCanvasElement | HTMLImageElement | null>(null);
   const miteImg = useRef<HTMLCanvasElement | HTMLImageElement | null>(null);
+  const bulletImg = useRef<HTMLImageElement | null>(null);
 
   useEffect(() => {
     const cleanImageRef = (src: string, ref: React.MutableRefObject<HTMLCanvasElement | HTMLImageElement | null>) => {
@@ -273,6 +295,9 @@ export default function MannyObstacleRun() {
 
     bgImg.current = new Image();
     bgImg.current.src = "/bg.png";
+
+    bulletImg.current = new Image();
+    bulletImg.current.src = "/bullet.png";
 
     // Load high-score from localStorage
     const saved = localStorage.getItem("manny-hi");
@@ -330,6 +355,7 @@ export default function MannyObstacleRun() {
     g.duckAnimFrame = 0;
     g.bgX = 0;
     g.obstacles = [];
+    g.bullets = [];
     g.particles = [];
     g.scorePopups = [];
     g.nextObstacleIn = 80;
@@ -493,6 +519,54 @@ export default function MannyObstacleRun() {
           }
         }
 
+        // Bullet spawning from obstacles
+        for (const ob of g.obstacles) {
+          if (ob.destroyed) continue;
+          ob.shotTimer--;
+          if (ob.shotTimer <= 0) {
+            const by = ob.kind === "mite" ? GROUND_Y - 40 : GROUND_Y - 95;
+            g.bullets.push({ x: ob.x, y: by, w: BULLET_W, h: BULLET_H, kind: ob.kind });
+            ob.shotTimer = randomInt(BULLET_SHOT_MIN, BULLET_SHOT_MAX);
+          }
+        }
+
+        // Move bullets & cull off-screen
+        for (let i = g.bullets.length - 1; i >= 0; i--) {
+          g.bullets[i].x -= BULLET_SPEED;
+          if (g.bullets[i].x + g.bullets[i].w < -10) {
+            g.bullets.splice(i, 1);
+          }
+        }
+
+        // Bullet collision with player
+        {
+          const bw = g.isDucking ? DUCK_DRAW_W : g.isPunching ? PUNCH_DRAW_W : CHAR_DRAW_W;
+          const bh = g.isDucking ? DUCK_DRAW_H : g.isPunching ? PUNCH_DRAW_H : CHAR_DRAW_H;
+          const bcx = CHAR_X;
+          const bcy = g.charY;
+          const bpLeft = bcx + 40;
+          const bpRight = bcx + bw - 40;
+          const bpTop = bcy + 10;
+          const bpBottom = bcy + bh - 6;
+          for (const b of g.bullets) {
+            if (
+              bpRight > b.x &&
+              bpLeft < b.x + b.w &&
+              bpBottom > b.y &&
+              bpTop < b.y + b.h
+            ) {
+              g.dead = true;
+              g.playing = false;
+              setGameState("dead");
+              if (g.score > highScore) {
+                setHighScore(g.score);
+                localStorage.setItem("manny-hi", String(g.score));
+              }
+              break;
+            }
+          }
+        }
+
         // Punch hitbox — check if punch destroys any obstacle
         if (g.isPunching) {
           const punchReach = CHAR_X + PUNCH_DRAW_W;
@@ -565,7 +639,7 @@ export default function MannyObstacleRun() {
         const cy = g.charY;
 
         // Shrink hitbox a bit for forgiveness
-        const hbShrink = 12;
+        const hbShrink = 40;
         const pLeft = cx + hbShrink;
         const pRight = cx + charW - hbShrink;
         const pTop = cy + hbShrink;
@@ -648,7 +722,7 @@ export default function MannyObstacleRun() {
             const oY = GROUND_Y - 100;
             ctx.drawImage(
               aeroJellyImg.current,
-              sx, 0, AERO_FW, AERO_FH,
+              sx + 20, 20, AERO_FW - 40, AERO_FH - 20,
               ob.x, oY, ob.width, ob.height
             );
           }
@@ -659,7 +733,7 @@ export default function MannyObstacleRun() {
             const oY = GROUND_Y - ob.height;
             ctx.drawImage(
               hollowImg.current,
-              sx, 0, HOLLOW_FW, HOLLOW_FH,
+              sx + 20, 20, HOLLOW_FW - 40, HOLLOW_FH - 20,
               ob.x, oY, ob.width, ob.height
             );
           }
@@ -670,13 +744,20 @@ export default function MannyObstacleRun() {
             const oY = GROUND_Y - ob.height;
             ctx.drawImage(
               miteImg.current,
-              sx, 0, MITE_FW, MITE_FH,
+              sx + 20, 20, MITE_FW - 40, MITE_FH - 20,
               ob.x, oY, ob.width, ob.height
             );
           }
         }
       }
       ctx.globalAlpha = 1;
+
+      /* ── draw bullets ── */
+      if (bulletImg.current) {
+        for (const b of g.bullets) {
+          ctx.drawImage(bulletImg.current, b.x, b.y, b.w, b.h);
+        }
+      }
 
       /* ── draw particles ── */
       for (const p of g.particles) {
@@ -708,7 +789,7 @@ export default function MannyObstacleRun() {
             const sx = g.punchAnimFrame * PUNCH_FW;
             ctx.drawImage(
               punchImg.current,
-              sx, 0, PUNCH_FW, PUNCH_FH,
+              sx + SPRITE_CROP, SPRITE_CROP, PUNCH_FW - SPRITE_CROP * 2, PUNCH_FH - SPRITE_CROP,
               CHAR_X, g.charY, PUNCH_DRAW_W, PUNCH_DRAW_H
             );
           }
@@ -740,17 +821,17 @@ export default function MannyObstacleRun() {
             const sh = DUCK_FH * cropRatio;
             ctx.drawImage(
               duckImg.current,
-              sx, sy, DUCK_FW, sh,
+              sx + SPRITE_CROP, sy + SPRITE_CROP, DUCK_FW - SPRITE_CROP * 2, sh - SPRITE_CROP,
               CHAR_X, g.charY, DUCK_DRAW_W, DUCK_DRAW_H
             );
           }
-        } else if (g.isJumping) {
+          } else if (g.isJumping) {
           // Jumping animation - use running sprite
           if (runImg.current) {
             const sx = g.animFrame * RUN_FW;
             ctx.drawImage(
               runImg.current,
-              sx, 0, RUN_FW, RUN_FH,
+              sx + SPRITE_CROP, SPRITE_CROP, RUN_FW - SPRITE_CROP * 2, RUN_FH - SPRITE_CROP,
               CHAR_X, g.charY, CHAR_DRAW_W, CHAR_DRAW_H
             );
           }
@@ -760,7 +841,7 @@ export default function MannyObstacleRun() {
             const sx = g.animFrame * RUN_FW;
             ctx.drawImage(
               runImg.current,
-              sx, 0, RUN_FW, RUN_FH,
+              sx + SPRITE_CROP, SPRITE_CROP, RUN_FW - SPRITE_CROP * 2, RUN_FH - SPRITE_CROP,
               CHAR_X, g.charY, CHAR_DRAW_W, CHAR_DRAW_H
             );
           }
@@ -773,7 +854,7 @@ export default function MannyObstacleRun() {
           const sx = idleAnimFrame * IDLE_FW;
           ctx.drawImage(
             idleImg.current,
-            sx, 0, IDLE_FW, IDLE_FH,
+            sx + SPRITE_CROP, SPRITE_CROP, IDLE_FW - SPRITE_CROP * 2, IDLE_FH - SPRITE_CROP,
             CHAR_X, GROUND_Y - CHAR_DRAW_H, CHAR_DRAW_W, CHAR_DRAW_H
           );
         }
