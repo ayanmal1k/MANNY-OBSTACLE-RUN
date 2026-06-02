@@ -453,6 +453,8 @@ export default function MannyObstacleRun() {
           g.isPunching = true;
           g.punchTimer = PUNCH_DURATION;
           g.punchAnimFrame = 0;
+          g.coinCount--;
+          setCoinCount(g.coinCount);
         }
       }
     };
@@ -588,6 +590,8 @@ export default function MannyObstacleRun() {
             g.isPunching = true;
             g.punchTimer = PUNCH_DURATION;
             g.punchAnimFrame = 0;
+            g.coinCount--;
+            setCoinCount(g.coinCount);
           }
         }
 
@@ -756,8 +760,6 @@ export default function MannyObstacleRun() {
               ob.destroyed = true;
               ob.destroyAnim = 0;
               ob.passed = true; // don't score again as dodge
-              g.coinCount--;
-              setCoinCount(g.coinCount);
               const punchPoints = ob.kind === "mite" ? 2 : ob.kind === "aero" ? 3 : 4;
               g.score += punchPoints;
               setScore(g.score);
