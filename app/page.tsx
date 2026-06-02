@@ -308,6 +308,9 @@ export default function MannyObstacleRun() {
     punchTimer: 0,
     punchAnimFrame: 0,
     frame: 0,
+    lastTime: 0,
+    animAccumulator: 0,
+    duckAnimAccumulator: 0,
     animFrame: 0,
     duckAnimFrame: 0,
     bgX: 0,
@@ -479,9 +482,14 @@ export default function MannyObstacleRun() {
     const ctx = canvas.getContext("2d")!;
     let animId: number;
 
-    function loop() {
+    function loop(now: number) {
       const g = gs.current;
       ctx.clearRect(0, 0, CANVAS_W, CANVAS_H);
+
+      // Delta-time normalization (target 60fps)
+      if (!g.lastTime) g.lastTime = now;
+      const dt = Math.min((now - g.lastTime) / 16.667, 3);
+      g.lastTime = now;
 
       /* ── draw scrolling background ── */
       if (bgImg.current && bgImg.current.complete) {
@@ -489,7 +497,7 @@ export default function MannyObstacleRun() {
         const bgDrawW = (bgImg.current.width / bgImg.current.height) * bgDrawH;
 
         if (g.playing && !g.dead) {
-          g.bgX -= BG_SPEED;
+          g.bgX -= BG_SPEED * dt;
           if (g.bgX <= -bgDrawW) g.bgX += bgDrawW;
         }
 
@@ -537,7 +545,7 @@ export default function MannyObstacleRun() {
 
       /* ── update logic (only when playing) ── */
       if (g.playing && !g.dead) {
-        g.frame++;
+        g.frame += dt;
         g.speed = OBSTACLE_SPEED_INITIAL + g.frame * OBSTACLE_SPEED_INCREMENT;
 
         // Jump
@@ -565,9 +573,9 @@ export default function MannyObstacleRun() {
 
         // Update punch timer
         if (g.isPunching) {
-          g.punchTimer--;
+          g.punchTimer -= dt;
           // Advance punch animation (cycle through 4 frames over PUNCH_DURATION)
-          const frameStep = Math.floor(PUNCH_DURATION / PUNCH_FRAMES);
+          const frameStep = PUNCH_DURATION / PUNCH_FRAMES;
           g.punchAnimFrame = Math.min(
             PUNCH_FRAMES - 1,
             Math.floor((PUNCH_DURATION - g.punchTimer) / Math.max(1, frameStep))
@@ -579,8 +587,8 @@ export default function MannyObstacleRun() {
         }
 
         // Apply gravity
-        g.velY += GRAVITY;
-        g.charY += g.velY;
+        g.velY += GRAVITY * dt;
+        g.charY += g.velY * dt;
 
         const standY = g.isDucking
           ? GROUND_Y - DUCK_DRAW_H
@@ -593,16 +601,22 @@ export default function MannyObstacleRun() {
         }
 
         // Animation frame (run cycle)
-        if (g.frame % 6 === 0) {
+        g.animAccumulator += dt;
+        if (g.animAccumulator >= 6) {
           g.animFrame = (g.animFrame + 1) % RUN_FRAMES;
+          g.animAccumulator -= 6;
         }
         // Duck animation frame
-        if (g.isDucking && g.frame % 8 === 0) {
-          g.duckAnimFrame = (g.duckAnimFrame + 1) % DUCK_FRAMES;
+        if (g.isDucking) {
+          g.duckAnimAccumulator += dt;
+          if (g.duckAnimAccumulator >= 8) {
+            g.duckAnimFrame = (g.duckAnimFrame + 1) % DUCK_FRAMES;
+            g.duckAnimAccumulator -= 8;
+          }
         }
 
         // Spawn obstacles
-        g.nextObstacleIn--;
+        g.nextObstacleIn -= dt;
         if (g.nextObstacleIn <= 0) {
           g.obstacles.push(createObstacle(CANVAS_W + 20, g.speed));
           g.nextObstacleIn = randomInt(OBSTACLE_MIN_GAP, OBSTACLE_MAX_GAP);
@@ -612,13 +626,13 @@ export default function MannyObstacleRun() {
         for (let i = g.obstacles.length - 1; i >= 0; i--) {
           const ob = g.obstacles[i];
           if (ob.destroyed) {
-            ob.destroyAnim++;
+            ob.destroyAnim+=dt;
             if (ob.destroyAnim > 20) {
               g.obstacles.splice(i, 1);
               continue;
             }
           }
-          ob.x -= g.speed;
+          ob.x -= g.speed * dt;
           if (ob.x + ob.width < -10) {
             g.obstacles.splice(i, 1);
           }
@@ -627,7 +641,7 @@ export default function MannyObstacleRun() {
         // Bullet spawning from obstacles
         for (const ob of g.obstacles) {
           if (ob.destroyed) continue;
-          ob.shotTimer--;
+          ob.shotTimer -= dt;
           if (ob.shotTimer <= 0 && ob.x > CHAR_X + 150 && ob.x < CANVAS_W - 50) {
             const by = ob.kind === "mite" ? GROUND_Y - 40 : GROUND_Y - 95;
             g.bullets.push({ x: ob.x, y: by, w: BULLET_W, h: BULLET_H, kind: ob.kind });
@@ -637,7 +651,7 @@ export default function MannyObstacleRun() {
 
         // Move bullets & cull off-screen
         for (let i = g.bullets.length - 1; i >= 0; i--) {
-          g.bullets[i].x -= BULLET_SPEED;
+          g.bullets[i].x -= BULLET_SPEED * dt;
           if (g.bullets[i].x + g.bullets[i].w < -10) {
             g.bullets.splice(i, 1);
           }
@@ -722,7 +736,7 @@ export default function MannyObstacleRun() {
         }
 
         // Coin spawning
-        g.nextCoinIn--;
+        g.nextCoinIn -= dt;
         if (g.nextCoinIn <= 0 && Math.random() < 0.15) {
           const coinY = randomInt(GROUND_Y - 130, GROUND_Y - 30);
           g.coins.push({ x: CANVAS_W + 20, y: coinY, collected: false });
@@ -733,7 +747,7 @@ export default function MannyObstacleRun() {
         for (let i = g.coins.length - 1; i >= 0; i--) {
           const c = g.coins[i];
           if (c.collected) { g.coins.splice(i, 1); continue; }
-          c.x -= g.speed;
+          c.x -= g.speed * dt;
           if (c.x + COIN_W < -10) { g.coins.splice(i, 1); continue; }
           // Collision with player hitbox
           const cw = g.isDucking ? DUCK_DRAW_W : g.isPunching ? PUNCH_DRAW_W : CHAR_DRAW_W;
@@ -829,10 +843,10 @@ export default function MannyObstacleRun() {
       /* ── update particles ── */
       for (let i = g.particles.length - 1; i >= 0; i--) {
         const p = g.particles[i];
-        p.x += p.vx;
-        p.y += p.vy;
-        p.vy += 0.3; // gravity on particles
-        p.life--;
+        p.x += p.vx * dt;
+        p.y += p.vy * dt;
+        p.vy += 0.3 * dt; // gravity on particles
+        p.life -= dt;
         if (p.life <= 0) {
           g.particles.splice(i, 1);
         }
@@ -840,8 +854,8 @@ export default function MannyObstacleRun() {
 
       /* ── update score popups ── */
       for (let i = g.scorePopups.length - 1; i >= 0; i--) {
-        g.scorePopups[i].y -= 1;
-        g.scorePopups[i].life--;
+        g.scorePopups[i].y -= 1 * dt;
+        g.scorePopups[i].life -= dt;
         if (g.scorePopups[i].life <= 0) {
           g.scorePopups.splice(i, 1);
         }
