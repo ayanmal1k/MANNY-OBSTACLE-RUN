@@ -38,19 +38,25 @@ You control **Manny**, who automatically runs from left to right. Your goal is t
 | <img src="./public/hollow.jpg" width="48" /> | **Hollow Stalker** | A tall ground enemy. Can be punched for the highest score. |
 | <img src="./public/mite.png" width="48" /> | **Scrap-Mite** | A small ground enemy. Low profile makes it tricky. |
 
-### Bullets (KO-Spark)
+### Bullets
 
-Each enemy can fire **Crystal KO-Spark** bullets at random intervals. Bullets **cannot be punched** -- you must dodge them.
+Each enemy fires bullets at random intervals. **Two types** of bullets exist, chosen randomly:
+
+| Bullet | Image | Damage | Notes |
+|--------|-------|--------|-------|
+| **Crystal KO-Spark** | <img src="./public/crystal bullet.png" width="48" /> | -50 HP | The standard bullet, hits hard |
+| **Nano Jab** | <img src="./public/bullet.png" width="48" /> | -25 HP | A lighter bullet, but still dangerous |
+
+Bullets **cannot be punched** -- you must dodge them.
 
 - **Aero-Jelly & Hollow Stalker bullets**: Mid-height -- dodge by **ducking** or **jumping**.
 - **Scrap-Mite bullets**: Low to the ground -- must be **jumped** over (ducking won't help).
-- Each bullet hit removes **50 HP** (half your health bar).
-- Health **regenerates automatically** over time.
+- Each hit briefly flashes the screen red and shows a damage popup.
 
 ### Health System
 
 You have **100 HP**. A health bar is displayed in the top-left corner of the game area.
-- Taking a bullet reduces HP by 50.
+- Crystal KO-Spark removes 50 HP. Nano Jab removes 25 HP.
 - Health regenerates slowly over time (~5.5 seconds to full recovery from 50 HP).
 - If HP reaches 0, the game ends.
 - Colors indicate danger level: green (>50%), yellow (25-50%), red (<25%).
@@ -74,7 +80,7 @@ public/
   aero-jelly.jpg     -- Aero-Jelly obstacle sprite (2 frames)
   hollow.jpg         -- Hollow Stalker obstacle sprite (2 frames)
   mite.png           -- Scrap-Mite obstacle sprite (2 frames)
-  bullet.png           -- KO-Spark bullet sprite (old)
+  bullet.png           -- Nano Jab bullet sprite
   crystal\ bullet.png  -- Crystal KO-Spark bullet sprite
   coin.png           -- Collectible coin sprite
   bg.png             -- Parallax background
@@ -122,8 +128,8 @@ npm start
 
 - Procedurally generated obstacles with increasing difficulty
 - Three enemy types with unique behaviors and scoring
-- Bullet system with different dodge requirements per enemy
-- Health bar with auto-regen (50% damage per hit)
+- Bullet system with two types: Crystal KO-Spark (50 HP) and Nano Jab (25 HP)
+- Health bar with auto-regen and damage flash feedback
 - Coin collection for bonus points
 - Punch mechanic to destroy obstacles
 - Score popups and particle effects

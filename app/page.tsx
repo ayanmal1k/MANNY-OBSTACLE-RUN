@@ -90,6 +90,7 @@ const BULLET_H = 10;
 const BULLET_SPEED = 7;
 const BULLET_SHOT_MIN = 80;                // min frames between shots
 const BULLET_SHOT_MAX = 200;               // max frames between shots
+const NANO_JAB_DAMAGE = 25;
 
 const COIN_W = 20;
 const COIN_H = 20;
@@ -119,6 +120,7 @@ interface Bullet {
   w: number;
   h: number;
   kind: ObstacleKind;
+  damage: number;
 }
 
 interface Coin {
@@ -349,11 +351,13 @@ export default function MannyObstacleRun() {
   const hollowImg = useRef<HTMLCanvasElement | HTMLImageElement | null>(null);
   const miteImg = useRef<HTMLCanvasElement | HTMLImageElement | null>(null);
   const bulletImg = useRef<HTMLImageElement | null>(null);
+  const nanoImg = useRef<HTMLImageElement | null>(null);
   const coinImg = useRef<HTMLImageElement | null>(null);
   const aeroPreviewRef = useRef<HTMLCanvasElement>(null);
   const hollowPreviewRef = useRef<HTMLCanvasElement>(null);
   const mitePreviewRef = useRef<HTMLCanvasElement>(null);
   const bulletPreviewRef = useRef<HTMLCanvasElement>(null);
+  const nanoPreviewRef = useRef<HTMLCanvasElement>(null);
   const coinPreviewRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
@@ -380,6 +384,9 @@ export default function MannyObstacleRun() {
     bulletImg.current = new Image();
     bulletImg.current.src = "/crystal%20bullet.png";
 
+    nanoImg.current = new Image();
+    nanoImg.current.src = "/bullet.png";
+
     coinImg.current = new Image();
     coinImg.current.src = "/coin.png";
 
@@ -396,6 +403,7 @@ export default function MannyObstacleRun() {
         { ref: hollowPreviewRef, img: hollowImg.current, fw: HOLLOW_FW, fh: HOLLOW_FH },
         { ref: mitePreviewRef, img: miteImg.current, fw: MITE_FW, fh: MITE_FH },
         { ref: bulletPreviewRef, img: bulletImg.current, fw: 0, fh: 0 },
+        { ref: nanoPreviewRef, img: nanoImg.current, fw: 0, fh: 0 },
         { ref: coinPreviewRef, img: coinImg.current, fw: 0, fh: 0 },
       ];
       for (const j of jobs) {
@@ -652,7 +660,8 @@ export default function MannyObstacleRun() {
           ob.shotTimer -= dt;
           if (ob.shotTimer <= 0 && ob.x > CHAR_X + 150 && ob.x < CANVAS_W - 50) {
             const by = ob.kind === "mite" ? GROUND_Y - 40 : GROUND_Y - 95;
-            g.bullets.push({ x: ob.x, y: by, w: BULLET_W, h: BULLET_H, kind: ob.kind });
+            const isNano = Math.random() < 0.5;
+            g.bullets.push({ x: ob.x, y: by, w: BULLET_W, h: BULLET_H, kind: ob.kind, damage: isNano ? NANO_JAB_DAMAGE : BULLET_DAMAGE });
             ob.shotTimer = randomInt(BULLET_SHOT_MIN, BULLET_SHOT_MAX);
           }
         }
@@ -683,13 +692,13 @@ export default function MannyObstacleRun() {
               bpBottom > b.y &&
               bpTop < b.y + b.h
             ) {
-              g.health -= BULLET_DAMAGE;
+              g.health -= b.damage;
               g.bullets.splice(i, 1);
               g.damageFlash = 10;
               g.scorePopups.push({
                 x: CHAR_X,
                 y: g.charY - 10,
-                text: `-${BULLET_DAMAGE} HP`,
+                text: `-${b.damage} HP`,
                 life: 40,
                 color: "#e74c3c",
               });
@@ -938,9 +947,10 @@ export default function MannyObstacleRun() {
       ctx.globalAlpha = 1;
 
       /* ── draw bullets ── */
-      if (bulletImg.current) {
-        for (const b of g.bullets) {
-          ctx.drawImage(bulletImg.current, b.x, b.y, b.w, b.h);
+      for (const b of g.bullets) {
+        const img = b.damage === NANO_JAB_DAMAGE ? nanoImg.current : bulletImg.current;
+        if (img) {
+          ctx.drawImage(img, b.x, b.y, b.w, b.h);
         }
       }
 
@@ -1343,7 +1353,7 @@ export default function MannyObstacleRun() {
             >
               Dodge obstacles for +{DODGE_SCORE} pt<br />
               Punch: Mite +2 &bull; Jelly +3 &bull; Hollow +4<br />
-              Bullets deal 50% damage &bull; Health regens over time
+              Crystal bullet -50 HP &bull; Nano Jab -25 HP &bull; Health regens
             </div>
           </div>
         )}
@@ -1536,7 +1546,7 @@ export default function MannyObstacleRun() {
         }}
       >
         <div style={{ fontSize: "10px", color: "#f39c12", letterSpacing: "2px", width: "100%", textAlign: "center", marginBottom: "4px" }}>
-          ── SCORING ──
+          ── SCORING & BULLETS ──
         </div>
 
         <div style={{ display: "flex", alignItems: "center", gap: "6px", padding: "6px 12px", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "6px" }}>
@@ -1556,7 +1566,12 @@ export default function MannyObstacleRun() {
 
         <div style={{ display: "flex", alignItems: "center", gap: "6px", padding: "6px 12px", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "6px" }}>
           <canvas ref={bulletPreviewRef} width={36} height={12} style={{ imageRendering: "pixelated", borderRadius: "4px", background: "#1a1a2e" }} />
-          <span>KO-Spark <span style={{ color: "#e74c3c" }}>☠</span></span>
+          <span>Crystal <span style={{ color: "#e74c3c" }}>-50 HP</span></span>
+        </div>
+
+        <div style={{ display: "flex", alignItems: "center", gap: "6px", padding: "6px 12px", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "6px" }}>
+          <canvas ref={nanoPreviewRef} width={36} height={12} style={{ imageRendering: "pixelated", borderRadius: "4px", background: "#1a1a2e" }} />
+          <span>Nano Jab <span style={{ color: "#e67e22" }}>-25 HP</span></span>
         </div>
 
         <div style={{ display: "flex", alignItems: "center", gap: "6px", padding: "6px 12px", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "6px" }}>
@@ -1575,7 +1590,7 @@ export default function MannyObstacleRun() {
           lineHeight: "1.8",
         }}
       >
-        Duck / Jump to dodge (+1) &bull; Punch to destroy for points &bull; Bullets do 50% damage (health regens) &bull; Collect coins ◎
+        Duck / Jump to dodge (+1) &bull; Punch to destroy for points &bull; Crystal bullet -50 HP &bull; Nano Jab -25 HP &bull; Health regens &bull; Collect coins ◎
       </div>
 
       {/* Global CSS for animations */}
