@@ -449,9 +449,11 @@ export default function MannyObstacleRun() {
     const handleClick = () => {
       const g = gs.current;
       if (g.playing && !g.dead && !g.isPunching) {
-        g.isPunching = true;
-        g.punchTimer = PUNCH_DURATION;
-        g.punchAnimFrame = 0;
+        if (g.coinCount > 0) {
+          g.isPunching = true;
+          g.punchTimer = PUNCH_DURATION;
+          g.punchAnimFrame = 0;
+        }
       }
     };
     canvas.addEventListener("click", handleClick);
@@ -577,14 +579,16 @@ export default function MannyObstacleRun() {
         g.isDucking =
           (keys.current["arrowdown"] || keys.current["s"]) && !g.isJumping && !g.isPunching;
 
-        // Punch (D key or Right arrow — triggers once per press)
+        // Punch (D key or Right arrow — triggers once per press, costs 1 coin)
         if (
           (keys.current["d"] || keys.current["arrowright"]) &&
           !g.isPunching
         ) {
-          g.isPunching = true;
-          g.punchTimer = PUNCH_DURATION;
-          g.punchAnimFrame = 0;
+          if (g.coinCount > 0) {
+            g.isPunching = true;
+            g.punchTimer = PUNCH_DURATION;
+            g.punchAnimFrame = 0;
+          }
         }
 
         // Update punch timer
@@ -752,6 +756,8 @@ export default function MannyObstacleRun() {
               ob.destroyed = true;
               ob.destroyAnim = 0;
               ob.passed = true; // don't score again as dodge
+              g.coinCount--;
+              setCoinCount(g.coinCount);
               const punchPoints = ob.kind === "mite" ? 2 : ob.kind === "aero" ? 3 : 4;
               g.score += punchPoints;
               setScore(g.score);
@@ -1111,10 +1117,19 @@ export default function MannyObstacleRun() {
 
       // Punch indicator
       if (g.playing && !g.dead) {
-        ctx.fillStyle = g.isPunching ? "rgba(243,156,18,0.8)" : "rgba(255,255,255,0.3)";
+        ctx.fillStyle = g.isPunching
+          ? "rgba(243,156,18,0.8)"
+          : g.coinCount > 0
+            ? "rgba(255,255,255,0.3)"
+            : "rgba(255,50,50,0.3)";
         ctx.font = "10px 'Press Start 2P', monospace";
         ctx.textAlign = "left";
-        ctx.fillText(g.isPunching ? "🥊 PUNCH!" : "🥊 Ready", 12, 20);
+        const punchText = g.isPunching
+          ? "🥊 PUNCH!"
+          : g.coinCount > 0
+            ? "🥊 Ready"
+            : "✕ No Coin!";
+        ctx.fillText(punchText, 12, 20);
       }
 
       // Speed indicator (subtle)
