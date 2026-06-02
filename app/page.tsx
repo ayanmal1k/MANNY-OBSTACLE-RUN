@@ -328,6 +328,7 @@ export default function MannyObstacleRun() {
     score: 0,
     coinCount: 0,
     health: MAX_HEALTH,
+    damageFlash: 0,
     playing: false,
     dead: false,
     // Score popup effect
@@ -474,6 +475,7 @@ export default function MannyObstacleRun() {
     g.score = 0;
     g.coinCount = 0;
     g.health = MAX_HEALTH;
+    g.damageFlash = 0;
     setCoinCount(0);
     g.playing = true;
     g.dead = false;
@@ -683,6 +685,14 @@ export default function MannyObstacleRun() {
             ) {
               g.health -= BULLET_DAMAGE;
               g.bullets.splice(i, 1);
+              g.damageFlash = 10;
+              g.scorePopups.push({
+                x: CHAR_X,
+                y: g.charY - 10,
+                text: `-${BULLET_DAMAGE} HP`,
+                life: 40,
+                color: "#e74c3c",
+              });
               if (g.health <= 0) {
                 g.dead = true;
                 g.playing = false;
@@ -854,6 +864,9 @@ export default function MannyObstacleRun() {
           }
         }
       }
+
+      /* ── update damage flash ── */
+      if (g.damageFlash > 0) g.damageFlash -= dt;
 
       /* ── update particles ── */
       for (let i = g.particles.length - 1; i >= 0; i--) {
@@ -1078,6 +1091,13 @@ export default function MannyObstacleRun() {
       ctx.font = "bold 7px 'Press Start 2P', monospace";
       ctx.textAlign = "left";
       ctx.fillText(`HP ${Math.ceil(g.health)}/${MAX_HEALTH}`, hpX + hpBarW + 8, hpY + 7);
+
+      // Damage flash overlay
+      if (g.damageFlash > 0) {
+        const flashAlpha = (g.damageFlash / 10) * 0.25;
+        ctx.fillStyle = `rgba(255, 0, 0, ${flashAlpha})`;
+        ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+      }
 
       // Punch indicator
       if (g.playing && !g.dead) {
