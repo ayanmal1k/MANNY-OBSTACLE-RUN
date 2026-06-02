@@ -87,7 +87,7 @@ const PUNCH_SCORE = 2;                     // points for punching an obstacle
 
 const BULLET_W = 30;
 const BULLET_H = 10;
-const BULLET_SPEED = 7;
+const BULLET_SPEED = 12;
 const BULLET_SHOT_MIN = 80;                // min frames between shots
 const BULLET_SHOT_MAX = 200;               // max frames between shots
 
@@ -523,7 +523,7 @@ export default function MannyObstacleRun() {
         for (const ob of g.obstacles) {
           if (ob.destroyed) continue;
           ob.shotTimer--;
-          if (ob.shotTimer <= 0) {
+          if (ob.shotTimer <= 0 && ob.x > CHAR_X + 150 && ob.x < CANVAS_W - 50) {
             const by = ob.kind === "mite" ? GROUND_Y - 40 : GROUND_Y - 95;
             g.bullets.push({ x: ob.x, y: by, w: BULLET_W, h: BULLET_H, kind: ob.kind });
             ob.shotTimer = randomInt(BULLET_SHOT_MIN, BULLET_SHOT_MAX);
@@ -656,8 +656,14 @@ export default function MannyObstacleRun() {
             oRight = ob.x + ob.width;
             oTop = GROUND_Y - 100;
             oBottom = GROUND_Y - 100 + ob.height;
+          } else if (ob.kind === "hollow") {
+            // hollow — shrunk hitbox 20px top/left/right
+            oLeft = ob.x + 20;
+            oRight = ob.x + ob.width - 20;
+            oTop = GROUND_Y - ob.height + 20;
+            oBottom = GROUND_Y;
           } else {
-            // ground obstacles (hollow / mite)
+            // mite
             oLeft = ob.x;
             oRight = ob.x + ob.width;
             oTop = GROUND_Y - ob.height;
