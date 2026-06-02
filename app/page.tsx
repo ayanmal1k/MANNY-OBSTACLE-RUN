@@ -246,6 +246,30 @@ export default function MannyObstacleRun() {
   const [highScore, setHighScore] = useState(0);
   const [coinCount, setCoinCount] = useState(0);
   const [gameState, setGameState] = useState<"idle" | "playing" | "dead">("idle");
+  const [isPortrait, setIsPortrait] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  const toggleFullscreen = async () => {
+    if (!document.fullscreenElement) {
+      await document.documentElement.requestFullscreen();
+      try { await (screen.orientation as any)?.lock?.("landscape"); } catch {}
+    } else {
+      await document.exitFullscreen();
+    }
+  };
+
+  useEffect(() => {
+    const check = () => setIsPortrait(window.innerHeight > window.innerWidth);
+    check();
+    window.addEventListener("resize", check);
+    return () => window.removeEventListener("resize", check);
+  }, []);
+
+  useEffect(() => {
+    const onFS = () => setIsFullscreen(!!document.fullscreenElement);
+    document.addEventListener("fullscreenchange", onFS);
+    return () => document.removeEventListener("fullscreenchange", onFS);
+  }, []);
 
   // Mutable game state (not React state — updated every frame)
   const gs = useRef({
@@ -1016,17 +1040,66 @@ export default function MannyObstacleRun() {
   return (
     <div
       style={{
-        minHeight: "100vh",
+        minHeight: isFullscreen ? "100vh" : "100vh",
+        height: isFullscreen ? "100vh" : "auto",
         background: "linear-gradient(135deg, #0f0f1a 0%, #1a1a2e 50%, #16213e 100%)",
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
-        justifyContent: "center",
+        justifyContent: isFullscreen ? "flex-start" : "center",
         fontFamily: "'Press Start 2P', monospace",
-        overflow: "hidden",
+        overflow: isFullscreen ? "hidden" : "hidden",
         position: "relative",
+        margin: 0,
+        padding: isFullscreen ? 0 : undefined,
       }}
     >
+      {/* Portrait lock overlay */}
+      {isPortrait && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 9999,
+            background: "#0f0f1a",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
+            color: "#fff",
+            fontFamily: "'Press Start 2P', monospace",
+            textAlign: "center",
+            padding: "20px",
+          }}
+        >
+          <div style={{ fontSize: "48px", marginBottom: "24px", animation: "pulse 1s ease-in-out infinite" }}>
+            📱↻
+          </div>
+          <div style={{ fontSize: "14px", color: "#f39c12", marginBottom: "12px" }}>
+            ROTATE YOUR DEVICE
+          </div>
+          <div style={{ fontSize: "9px", color: "rgba(255,255,255,0.4)", lineHeight: "1.8" }}>
+            Please rotate to landscape mode<br />to play the game
+          </div>
+          <button
+            onClick={toggleFullscreen}
+            style={{
+              marginTop: "24px",
+              padding: "10px 24px",
+              fontSize: "10px",
+              fontFamily: "'Press Start 2P', monospace",
+              background: "#f39c12",
+              color: "#0f0f1a",
+              border: "none",
+              borderRadius: "6px",
+              cursor: "pointer",
+            }}
+          >
+            FULLSCREEN
+          </button>
+        </div>
+      )}
+
       {/* Animated background particles */}
       <div style={{ position: "absolute", inset: 0, overflow: "hidden", pointerEvents: "none" }}>
         {Array.from({ length: 30 }).map((_, i) => (
@@ -1050,6 +1123,7 @@ export default function MannyObstacleRun() {
       {/* Title */}
       <h1
         style={{
+          display: isFullscreen ? "none" : "block",
           fontSize: "28px",
           fontWeight: 900,
           color: "transparent",
@@ -1066,9 +1140,32 @@ export default function MannyObstacleRun() {
         MANNY OBSTACLE RUN
       </h1>
 
+      {/* Fullscreen button */}
+      <button
+        onClick={toggleFullscreen}
+        style={{
+          display: isFullscreen ? "none" : "block",
+          position: "absolute",
+          top: "12px",
+          right: "12px",
+          padding: "6px 12px",
+          fontSize: "9px",
+          fontFamily: "'Press Start 2P', monospace",
+          background: isFullscreen ? "rgba(255,255,255,0.1)" : "rgba(243,156,18,0.2)",
+          color: isFullscreen ? "rgba(255,255,255,0.4)" : "#f39c12",
+          border: `1px solid ${isFullscreen ? "rgba(255,255,255,0.15)" : "rgba(243,156,18,0.3)"}`,
+          borderRadius: "6px",
+          cursor: "pointer",
+          zIndex: 10,
+        }}
+      >
+        {isFullscreen ? "✕ EXIT" : "⛶ FULL"}
+      </button>
+
       {/* Subtitle */}
       <p
         style={{
+          display: isFullscreen ? "none" : "block",
           color: "rgba(255,255,255,0.4)",
           fontSize: "10px",
           letterSpacing: "4px",
@@ -1083,10 +1180,15 @@ export default function MannyObstacleRun() {
       <div
         style={{
           position: "relative",
-          borderRadius: "12px",
-          padding: "3px",
-          background: "linear-gradient(135deg, rgba(243,156,18,0.4), rgba(231,76,60,0.4))",
-          boxShadow: "0 0 40px rgba(243,156,18,0.15), 0 20px 60px rgba(0,0,0,0.5)",
+          borderRadius: isFullscreen ? "0px" : "12px",
+          padding: isFullscreen ? "0px" : "3px",
+          background: isFullscreen ? "#000" : "linear-gradient(135deg, rgba(243,156,18,0.4), rgba(231,76,60,0.4))",
+          boxShadow: isFullscreen ? "none" : "0 0 40px rgba(243,156,18,0.15), 0 20px 60px rgba(0,0,0,0.5)",
+          width: isFullscreen ? "100vw" : undefined,
+          height: isFullscreen ? "100vh" : undefined,
+          display: isFullscreen ? "flex" : undefined,
+          alignItems: isFullscreen ? "center" : undefined,
+          justifyContent: isFullscreen ? "center" : undefined,
         }}
       >
         <canvas
@@ -1095,7 +1197,10 @@ export default function MannyObstacleRun() {
           height={CANVAS_H}
           style={{
             display: "block",
-            borderRadius: "10px",
+            width: isFullscreen ? "100%" : undefined,
+            height: isFullscreen ? "100%" : undefined,
+            objectFit: isFullscreen ? "contain" : undefined,
+            borderRadius: isFullscreen ? "0px" : "10px",
             background: "#1a1a2e",
             imageRendering: "pixelated",
             cursor: "crosshair",
@@ -1204,7 +1309,7 @@ export default function MannyObstacleRun() {
       {/* Score bar */}
       <div
         style={{
-          display: "flex",
+          display: isFullscreen ? "none" : "flex",
           gap: "40px",
           marginTop: "20px",
           padding: "12px 32px",
@@ -1238,8 +1343,8 @@ export default function MannyObstacleRun() {
       {/* Scoring Guide */}
       <div
         style={{
+          display: isFullscreen ? "none" : "flex",
           marginTop: "16px",
-          display: "flex",
           gap: "24px",
           fontSize: "9px",
           color: "rgba(255,255,255,0.5)",
@@ -1280,6 +1385,7 @@ export default function MannyObstacleRun() {
 
       <div
         style={{
+          display: isFullscreen ? "none" : "block",
           marginTop: "8px",
           fontSize: "8px",
           color: "rgba(255,255,255,0.2)",
