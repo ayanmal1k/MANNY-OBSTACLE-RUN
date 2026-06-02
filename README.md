@@ -65,7 +65,7 @@ You have **100 HP**. A health bar is displayed in the top-left corner of the gam
 
 Gold coins appear at random heights and intervals. Collect them to fuel your punches.
 
-- Each coin allows **one punch** (1 coin = 1 punch).
+- Each coin allows **one punch** (1 coin = 1 punch), consumed even if the punch misses.
 - Punches are blocked when you have 0 coins, shown as `✕ No Coin!` on the HUD.
 - Coins are placed with a safe gap from obstacles so they're always reachable.
 - Coin count is displayed on the canvas HUD and score bar.
